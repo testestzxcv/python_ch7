@@ -1,9 +1,10 @@
-from django.shortcuts import render
-from django.http import HttpResponse
+from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseNotFound, Http404
 
 from .models import Candidate, Poll2, Choice4
 
 import datetime
+from django.db.models import Sum
 
 # Create your views here.
 
@@ -23,6 +24,15 @@ def index(request):
     return render(request, 'elections/index.html', context)  # HttpResponse 반복에 대한 단축 코드. render 함수는 request 객체를 첫번째 인자로, 템플릿 이름을 두번째 인자로 받습니다. 그리고 세번째 인자는 선택적으로써, 템플릿에 전달할 딕셔너리입니다. render() 함수는 주어진 템플릿과 딕셔너리로 렌더링된 결과를 HttpResponse 객체로 리턴합니다.
     # 1. DB를 불러와서 -> 2. Context에 넣어서 -> 3. html 파일로 전달 ->
     # 4. html 파일에서는 context 에 들어있는 candidates 를 불러서 이용할수가 있다.
+
+def candidates(request, name):
+    candidate = get_object_or_404(Candidate, name = name)    # 오브젝트를 가져오거나 아니면 404를 발생시켜라 라는 의미
+    # try:
+    #     candidate = Candidate.objects.get(name = name)  # url이 저장되어있지 않으면 이부분에서 불러올수 없기때문에 에러난다.
+    # except:
+    #     # return HttpResponseNotFound("없는 페이지 입니다.")
+    #     raise Http404
+    return HttpResponse(candidate.name)
 
 
 def areas(request, area):
@@ -49,4 +59,30 @@ def polls(request, poll_id):
         choice = Choice4(poll_id = poll_id, candidate_id = selection,  votes=1)
         choice.save()
 
-    return HttpResponse("finish")
+    return HttpResponseRedirect("/areas/{}/results".format(poll.area))
+
+
+def results(request, area):
+    candidates = Candidate.objects.filter(area = area)
+    polls = Poll2.objects.filter(area = area)
+    poll_results = []   # 한번한번의 투표의 결과를 리스트에 넣어준다.
+    for poll in polls:
+        result = {}
+        result['start_date'] = poll.start_date
+        result['end_date'] = poll.end_date
+        total_votes = Choice4.objects.filter(poll_id = poll.id).aggregate(Sum('votes')) # 숫자를 넘겨주는게 아니라 딕셔너리를 넘겨준다.
+        result['total_votes'] = total_votes['votes__sum']
+        rates = []
+        for candidate in candidates:
+            try:
+                choice = Choice4.objects.get(poll_id = poll.id,
+                                             candidate_id = candidate.id)
+                rates.append(round(choice.votes * 100 /result['total_votes'], 1))
+            except:
+                rates.append(0)
+        result['rates'] = rates
+        poll_results.append(result)
+
+    context = {'candidates':candidates, 'area':area,
+               'poll_results' : poll_results}
+    return render(request, 'elections/result.html', context)

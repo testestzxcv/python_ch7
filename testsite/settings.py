@@ -25,7 +25,7 @@ SECRET_KEY = '4ed_$yuhgmx+oyvri-d$z$lv&w2i#j_dvpatka1^@ny*9)_=5%'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost']
 
 
 # Application definition
@@ -56,7 +56,7 @@ ROOT_URLCONF = 'testsite.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ['templates'],  # 입력한 폴더를 접속할수 있도록 명시해준다
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
